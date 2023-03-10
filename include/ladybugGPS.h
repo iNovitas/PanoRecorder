@@ -533,7 +533,7 @@ typedef struct LadybugNMEAGPSData
 LADYBUGDLL_API LadybugError 
 ladybugCreateGPSContext( LadybugGPSContext* pContext );
 
-/**
+ /**
  * Destroys a GPS context.
  *
  * Frees memory associated with the LadybugGPSContext. This should be called 

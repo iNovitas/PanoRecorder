@@ -139,6 +139,9 @@ typedef enum LadybugError
    /** Invalid stream file name. */
    LADYBUG_INVALID_STREAM_FILE_NAME,
 
+   /** Invalid stream version. */
+   LADYBUG_INVALID_STREAM_VERSION,
+
    /** Device or object not initialized. */
    LADYBUG_NOT_INITIALIZED,
 
@@ -171,6 +174,9 @@ typedef enum LadybugError
 
    /** No calibration file was found on the Ladybug head unit. */
    LADYBUG_CALIBRATION_FILE_NOT_FOUND,
+
+   /** The .cal file has incorrect resolution. */
+    LADYBUG_CAL_FILE_INCORRECT_RESOLUTION,
 
    /** An error occurred during JPEG decompression. */
    LADYBUG_JPEG_ERROR,
@@ -298,6 +304,9 @@ typedef enum LadybugError
    /** The configuration file is invalid (eg. File is missing data, corrupted, or outdated) */
    LADYBUG_INVALID_CONFIG_FILE,
 
+   /** Insufficient resources to complete the operation. */
+   LADYBUG_INSUFFICIENT_RESOURCES,
+
    /** Number of errors */
    LADYBUG_NUM_LADYBUG_ERRORS,
 
@@ -424,8 +433,7 @@ typedef enum LadybugDataFormat
 
    /**
     * Similar to LADYBUG_DATAFORMAT_COLOR_SEP_JPEG8.
-    * The height of the image is only half of the original image. 
-    * This format is only supported by Ladybug3.
+    * The height of the image is only half of the original image.
     */
    LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG8,
 
@@ -468,6 +476,19 @@ typedef enum LadybugDataFormat
     */
    LADYBUG_DATAFORMAT_HALF_HEIGHT_RAW12,
 
+   /**
+	* Similar to LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12 except that the image
+	* is processed (e.g. WB, CCM).
+	*/
+   LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12_PROCESSED,
+   
+   /**
+	* Similar to LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12_PROCESSED.
+	* The height of the image is only half of that in LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12_PROCESSED format.
+	*/
+	LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12_PROCESSED,
+
+
    /** The number of possible data formats. */
    LADYBUG_NUM_DATAFORMATS,
 
@@ -493,7 +514,8 @@ typedef enum LadybugResolution
     LADYBUG_RESOLUTION_1616x1232 = 8, /**< 1616x1232 pixels. Ladybug3 camera.  */   
     LADYBUG_RESOLUTION_2448x2048 = 9, /**< 2448x2048 pixels. Ladybug5 camera.  */ 
     LADYBUG_RESOLUTION_2464x2048 = 12, /**< 2464x2048 pixels. Ladybug5P camera.  */
-    LADYBUG_NUM_RESOLUTIONS = 10, /**< Number of possible resolutions. */   
+	LADYBUG_RESOLUTION_4096x2992 = 13, /**< 4096x2992 pixels. Ladybug6 camera.  */
+	LADYBUG_NUM_RESOLUTIONS = 10, /**< Number of possible resolutions. */
     LADYBUG_RESOLUTION_ANY = 11, /**< Hook for any usable resolution. */   
     LADYBUG_RESOLUTION_FORCE_QUADLET = 0x7FFFFFFF, /**< Unused member. */
 } LadybugResolution;
@@ -544,6 +566,13 @@ typedef enum LadybugColorProcessingMethod
    LADYBUG_DOWNSAMPLE16,
 
    /**
+     * Downsample64 mode - Color process to output a one-eighth width and one-eighth
+     * height image. This allows for faster previews and processing. This
+     * results in an image that is 1/64th the size of the source image.
+     */
+    LADYBUG_DOWNSAMPLE64,
+
+    /**
     * Mono - This processing method only uses the green color channel to
     * generate grey scale Ladybug images. It is designed for fast previews of
     * image streams. This method also downsamples the image as in
@@ -653,8 +682,9 @@ typedef enum LadybugDeviceType
     LADYBUG_DEVICE_COMPRESSOR, /**< Ladybug JPEG compressor (Ladybug2). */   
     LADYBUG_DEVICE_LADYBUG3, /**< Ladybug3 camera */   
     LADYBUG_DEVICE_LADYBUG5, /**< Ladybug5 camera */   
-    LADYBUG_DEVICE_LADYBUG5P, /**< Ladybug5C camera */
-    LADYBUG_DEVICE_UNKNOWN, /**< This is an error case. */   
+    LADYBUG_DEVICE_LADYBUG5P, /**< Ladybug5P camera */
+	LADYBUG_DEVICE_LADYBUG6, /**< Ladybug6 camera */
+	LADYBUG_DEVICE_UNKNOWN, /**< This is an error case. */
     LADYBUG_DEVICE_FORCE_QUADLET = 0x7FFFFFFF, /**< Unused member. */
 } LadybugDeviceType;
 
@@ -849,14 +879,14 @@ typedef struct LadybugImageInfo
    unsigned int ulGamma; /**< Gamma value */   
    unsigned int ulSerialNum; /**< The serial number of the Ladybug camera. */   
    unsigned int ulShutter[LADYBUG_NUM_CAMERAS]; /**< Shutter values for each camera. */
-   unsigned int ulGpsFixQuality; /**< GPS fix quality, taken from GGA NMEA sentence. Only supported on LD5+ */
-   bool bPpsStatus; /**< Represents whether the PPS is enabled or not. Only supported on LD5+ */
-   bool bGpsStatus; /**< Represents whether the GPS is enabled or not. Only supported on LD5+ */
+   unsigned int ulGpsFixQuality; /**< GPS fix quality, taken from GGA NMEA sentence. Only supported on LD5P, LD6 */
+   bool bPpsStatus; /**< Represents whether the PPS is enabled or not. Only supported on LD5P, LD6 */
+   bool bGpsStatus; /**< Represents whether the GPS is enabled or not. Only supported on LD5P, LD6 */
    double dGPSLatitude; /**< GPS Latitude. < 0 = South of Equator, > 0 = North of Equator.  */
    double dGPSLongitude; /**< GPS Longitude. < 0 = West of Prime Meridian, > 0 = East of Prime Meridian.  */
    double dGPSAltitude; /**< GPS Antenna Altitude above / below mean-sea-level (geoid) (in meters). */
-   unsigned int ulJpegQuality; /** JPEG Quality. Reflects register 1E80. Only supported on LD5+ firmware 1.13.2.0 or later. */
-   unsigned int ulBufferUsage; /** Buffer Usage. Reflects register 1E84. Only supported on LD5+ firmware 1.13.2.0 or later. */
+   unsigned int ulJpegQuality; /** JPEG Quality. Reflects register 1E80. Only supported on LD5P firmware 1.13.2.0 or later, or LD6.*/
+   unsigned int ulBufferUsage; /** Buffer Usage. Reflects register 1E84. Only supported on LD5P firmware 1.13.2.0 or later, or LD6.*/
 
 } LadybugImageInfo;
 
@@ -1310,11 +1340,11 @@ ladybugErrorToString(const LadybugError error);
 /**
  * Returns the version numbers of the ladybug library.
  *
- * @param context  - The LadybugContext to access.
- * @param puiMajor - The major version number
- * @param puiMinor - The minor version number
- * @param puiType  - The version type (0-alpha, 1-beta, 2-release)
- * @param puiBuild - The build number
+ * @param context        - The LadybugContext to access.
+ * @param puiMajor       - The major version number
+ * @param puiMinor       - The minor version number
+ * @param puiMaintenance - The maintenance version number
+ * @param puiBuild       - The build number
  *
  * @return A LadybugError indicating the success of the function.
  */
@@ -1323,7 +1353,7 @@ ladybugGetLibraryVersion(
     LadybugContext context,
     unsigned int* puiMajor,
     unsigned int* puiMinor,
-    unsigned int* puiType,
+    unsigned int* puiMaintenance,
     unsigned int* puiBuild );
 
 /**
@@ -1914,6 +1944,22 @@ ladybugUnlock(
     unsigned int uiBufferIndex );
   
 /**
+ * Checks and sets the variable "isLocked" to true/false if the buffer is locked/unlocked.
+ *
+ * @param context       - The LadybugContext to access.
+ * @param uiBufferIndex - The index of the buffer to check.
+ * @param isLocked      - The locked/unlocked status of the buffer (output variable).
+ *
+ * @return A LadybugError indicating the success of the function.
+ *
+ * @see ladybugLockNext(), ladybugUnlockAll()
+ */
+LADYBUGDLL_API LadybugError ladybugIsLocked(
+    LadybugContext context, 
+    unsigned int uiBufferIndex, 
+    bool& isLocked);
+
+    /**
  * Unlocks all locked images. This function is equivalent to calling 
  * ladybugUnlock() for every locked buffer.
  *
@@ -2613,7 +2659,7 @@ ladybugSetFalloffCorrectionAttenuation(
  *
  * The specified gamma should match the gamma setting when these images were
  * originally captured. Gamma can be extracted either interactively from the
- * Camera Control Dialog of the LadybugCap or LadybugCapPro programs, or 
+ * Camera Control Dialog of the LadybugCapPro program, or 
  * programmatically from the ulGamma field inside the LadybugImageInfo 
  * of the original LadybugImage.
  *
@@ -2652,7 +2698,7 @@ ladybugCorrectBGRUFalloffEx(
  *
  * The specified gamma should match the gamma setting when these images were
  * originally captured. Gamma can be extracted either interactively from the
- * Camera Control Dialog of the LadybugCap or LadybugCapPro programs or 
+ * Camera Control Dialog of the LadybugCapPro program or 
  * programmatically from the ulGamma field inside the LaydbugImageInfo of 
  * the original LadybugImage.
  *

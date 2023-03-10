@@ -38,7 +38,7 @@ namespace LadybugAPI
      * @ingroup Ladybug_cs
      */
 
-    /*@{*/ 
+    /*@{*/
 
     /** An enumeration of all possible errors returned by the Ladybug API. */
     public enum LadybugError
@@ -117,6 +117,9 @@ namespace LadybugAPI
 
         /** No calibration file was found on the Ladybug head unit. */
         LADYBUG_CALIBRATION_FILE_NOT_FOUND,
+
+        /** The .cal file has incorrect resolution. */
+        LADYBUG_CAL_FILE_INCORRECT_RESOLUTION,
 
         /** An error occurred during JPEG decompression. */
         LADYBUG_JPEG_ERROR,
@@ -318,7 +321,7 @@ namespace LadybugAPI
      * such as ladybugSetIndProperty().
      */
     public enum LadybugCameraBits
-    {  
+    {
         LADYBUG_UNIT_0 = (0x1 << 0), /**< Camera Unit 0 */
         LADYBUG_UNIT_1 = (0x1 << 1), /**< Camera Unit 0 */
         LADYBUG_UNIT_2 = (0x1 << 2), /**< Camera Unit 0 */
@@ -412,6 +415,18 @@ namespace LadybugAPI
          */
         LADYBUG_DATAFORMAT_HALF_HEIGHT_RAW12,
 
+        /**
+         * Similar to LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12 except that the image
+         * is processed (e.g. WB, CCM).
+         */
+        LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12_PROCESSED,
+
+        /**
+         * Similar to LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12_PROCESSED.
+         * The height of the image is only half of that in LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12_PROCESSED format.
+         */
+        LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12_PROCESSED,
+
         /** The number of possible data formats. */
         LADYBUG_NUM_DATAFORMATS,
 
@@ -436,12 +451,13 @@ namespace LadybugAPI
         LADYBUG_RESOLUTION_1616x1232 = 8, /**< 1616x1232 pixels. Ladybug3 camera.  */
         LADYBUG_RESOLUTION_2448x2048 = 9, /**< 2448x2048 pixels. Ladybug5 camera.  */
         LADYBUG_RESOLUTION_2464x2048 = 12, /**< 2464x2048 pixels. Ladybug5P camera.  */
+        LADYBUG_RESOLUTION_4096x2992 = 13, /**< 4096x2992 pixels. Ladybug6 camera.  */
         LADYBUG_NUM_RESOLUTIONS = 10, /**< Number of possible resolutions. */
         LADYBUG_RESOLUTION_ANY = 11, /**< Hook for any usable resolution. */
         LADYBUG_RESOLUTION_FORCE_QUADLET = 0x7FFFFFFF, /**< Unused member. */
     };
 
-/** The available color processing/destippling/demosaicing methods. */
+    /** The available color processing/destippling/demosaicing methods. */
     public enum LadybugColorProcessingMethod
     {
         /**
@@ -485,6 +501,13 @@ namespace LadybugAPI
          * results in an image that is 1/16th the size of the source image.
          */
         LADYBUG_DOWNSAMPLE16,
+
+        /**
+         * Downsample64 mode - Color process to output a one-eighth width and one-eighth
+         * height image. This allows for faster previews and processing. This
+         * results in an image that is 1/64th the size of the source image.
+         */
+        LADYBUG_DOWNSAMPLE64,
 
         /**
          * Mono - This processing method only uses the green color channel to
@@ -588,6 +611,7 @@ namespace LadybugAPI
         LADYBUG_DEVICE_LADYBUG3,
         LADYBUG_DEVICE_LADYBUG5,
         LADYBUG_DEVICE_LADYBUG5P,
+        LADYBUG_DEVICE_LADYBUG6,
         LADYBUG_DEVICE_UNKNOWN,
         LADYBUG_DEVICE_FORCE_QUADLET = 0x7FFFFFFF,
     };
@@ -703,7 +727,7 @@ namespace LadybugAPI
      * @ingroup Ladybug_cs
      */
 
-    /*@{*/ 
+    /*@{*/
 
     /**
      * This structure defines the format by which time is represented in the
@@ -790,14 +814,14 @@ namespace LadybugAPI
         // Shutter values for each sensor.  Similar to the DCAM shutter register.
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 6)]
         public uint[] ulShutter;
-        // GPS fix quality, taken from GGA NMEA sentence Only supported on LD5+ 
+        // GPS fix quality, taken from GGA NMEA sentence Only supported on LD5P, LD6
         public uint ulGpsFixQuality;
-        // Represents whether the PPS is enabled or not. Only supported on LD5+ 
+        // Represents whether the PPS is enabled or not. Only supported on LD5P, LD6 
         [MarshalAsAttribute(UnmanagedType.I1)]
         public bool bPpsStatus;
-        // Represents whether the GPS is enabled or not. Only supported on LD5+ 
+        // Represents whether the GPS is enabled or not. Only supported on LD5P, LD6
         [MarshalAsAttribute(UnmanagedType.I1)]
-        public bool bGpsStatus; 
+        public bool bGpsStatus;
         // GPS Latitude, < 0 = South of Equator, > 0 = North of Equator.
         // If dGPSLatitude = LADYBUG_INVALID_GPS_DATA(defined in ladybugstream.h),
         // the data is invalid
@@ -811,9 +835,9 @@ namespace LadybugAPI
         // the data is invalid
         public double dGPSAltitude;
 
-        //JPEG Quality. Reflects register 1E80. Only supported on LD5+ firmware 1.13.2.0 or later.
+        //JPEG Quality. Reflects register 1E80. Only supported on LD5P firmware 1.13.2.0 or later, or LD6.
         public uint ulJpegQuality;
-        // Buffer Usage. Reflects register 1E84. Only supported on LD5+ firmware 1.13.2.0 or later.
+        // Buffer Usage. Reflects register 1E84. Only supported on LD5P firmware 1.13.2.0 or later, or LD6.
         public uint ulBufferUsage;
     };
 
@@ -972,7 +996,7 @@ namespace LadybugAPI
         public bool enableGpsTimeSync;
         public uint baudRate;
     };
-    
+
     /** The Ladybug processed image structure. */
     unsafe public struct LadybugProcessedImage
     {
@@ -1000,7 +1024,7 @@ namespace LadybugAPI
     unsafe public struct LadybugCameraInfo
     {
         public uint serialBase; /**< Base unit serial number. */
-        public uint serialHead; /**< Camera serial number. */   
+        public uint serialHead; /**< Camera serial number. */
 
         [MarshalAsAttribute(UnmanagedType.I1)]
         public bool bIsColourCamera; /**< Indicates whether or not the camera is a colour camera. */
@@ -1008,10 +1032,10 @@ namespace LadybugAPI
         public LadybugDeviceType deviceType; /**< Camera type. */
 
         [MarshalAsAttribute(UnmanagedType.ByValTStr, SizeConst = 256)]
-        public string pszModelName; /**< Model name string. */ 
+        public string pszModelName; /**< Model name string. */
 
         [MarshalAsAttribute(UnmanagedType.ByValTStr, SizeConst = 256)]
-        public string pszSensorInfo; /**< Sensor info string. */   
+        public string pszSensorInfo; /**< Sensor info string. */
 
         [MarshalAsAttribute(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string pszVendorName; /**< Vendor name string. */
@@ -1030,7 +1054,7 @@ namespace LadybugAPI
         public uint firmwareBuildNum; /**< Firmware build number. */
     };
 
-        
+
     /** A camera trigger property. */
     unsafe public struct LadybugTriggerModeInfo
     {
@@ -1160,38 +1184,38 @@ namespace LadybugAPI
         public fixed int reserved[26]; /**< Reserved field. Should not be used. */
     };
 
-	/** Structure containing Ladybug image statistics data. */
-	unsafe public struct LadybugImageStatistics
-	{
-		public enum Channel
-		{
-			GREY,
-			RED,
-			GREEN,
-			BLUE,
-			NUM_STATISTICS_CHANNELS
-		};
+    /** Structure containing Ladybug image statistics data. */
+    unsafe public struct LadybugImageStatistics
+    {
+        public enum Channel
+        {
+            GREY,
+            RED,
+            GREEN,
+            BLUE,
+            NUM_STATISTICS_CHANNELS
+        };
 
-		public struct ChannelData
-		{
+        public struct ChannelData
+        {
             [MarshalAsAttribute(UnmanagedType.I1)]
             public bool bValid; /**< Whether this channel has valid data.  */
 
-			public uint uiRangeMin; /**< Minimum possible pixel value for this channel. */
-			public uint uiRangeMax; /**< Maximum possible pixel value for this channel. */
-			public uint uiPixelValueMin; /**< Minimum pixel value of the channel. */
-			public uint uiPixelValueMax; /**< Maximum pixel value of the channel. */
-			public float fPixelValueMean; /**< Mean value of the channel. */
+            public uint uiRangeMin; /**< Minimum possible pixel value for this channel. */
+            public uint uiRangeMax; /**< Maximum possible pixel value for this channel. */
+            public uint uiPixelValueMin; /**< Minimum pixel value of the channel. */
+            public uint uiPixelValueMax; /**< Maximum pixel value of the channel. */
+            public float fPixelValueMean; /**< Mean value of the channel. */
 
-			/**
+            /**
 			* Histogram array. Each value in the array contains the pixel
 			* count for the corresponding pixel value. For example, if
 			* histogram[1] is 100, that means there are 100 pixels in the image
 			* with a pixel value of 1 for that channel.
 			*/
-			public fixed int uiHistogram[Ladybug.LADYBUG_HISTOGRAM_SIZE];
+            public fixed int uiHistogram[Ladybug.LADYBUG_HISTOGRAM_SIZE];
 
-		};
+        };
 
         public struct TotalStatisticData
         {
@@ -1202,7 +1226,7 @@ namespace LadybugAPI
         }
 
         public TotalStatisticData StatisticsData;
-	};
+    };
 
     /** Structure containing color correction parameters. */
     unsafe public struct LadybugColorCorrectionParams
@@ -1220,25 +1244,25 @@ namespace LadybugAPI
     /** Structure containing tone mapping parameters. */
     unsafe public struct LadybugToneMappingParams
     {
-       /**
-        * This value is only applicable for OpenGL tone mapping. It is ignored
-        * in all other cases.
-        *
-        * This value determines how much compression is applied to the image.
-        * This value must be between 0.1 and 40.0.
-        */
+        /**
+         * This value is only applicable for OpenGL tone mapping. It is ignored
+         * in all other cases.
+         *
+         * This value determines how much compression is applied to the image.
+         * This value must be between 0.1 and 40.0.
+         */
         public double dCompressionScale;
 
-       /**
-        * This value is only applicable for OpenGL tone mapping. It is ignored
-        * in all other cases.
-        *
-        * This value determines the size of the local area when calculating the
-        * average intensity of a given pixel.
-        * This value must be between 0 and 10. If the value is 0, the local average
-        * is determined by the pixel itself, so it behaves as a global compression
-        * operator.
-        */
+        /**
+         * This value is only applicable for OpenGL tone mapping. It is ignored
+         * in all other cases.
+         *
+         * This value determines the size of the local area when calculating the
+         * average intensity of a given pixel.
+         * This value must be between 0 and 10. If the value is 0, the local average
+         * is determined by the pixel itself, so it behaves as a global compression
+         * operator.
+         */
         public double dLocalAreaSize;
 
         /** Tone mapping mode to be used. */
@@ -1268,7 +1292,7 @@ namespace LadybugAPI
     // This class defines static functions to access most of the
     // Ladybug APIs defined in ladybug.h
     unsafe public partial class Ladybug
-    {        
+    {
         /** 
          * @defgroup ManagedGeneralFunctions General Functions 
          * 
@@ -1298,16 +1322,16 @@ namespace LadybugAPI
         /**
          * Returns the version numbers of the ladybug library.
          *
-         * @param context   - The LadybugContext to access.
-         * @param major     - The major version number
-         * @param minor     - The minor version number
-         * @param type      - The version type (0-alpha, 1-beta, 2-release)
-         * @param nuild     - The build number
+         * @param context     - The LadybugContext to access.
+         * @param major       - The major version number
+         * @param minor       - The minor version number
+         * @param maintenance - The maintenance version number
+         * @param nuild       - The build number
          *
          * @return A LadybugError indicating the success of the function.
          */
         [DllImport(LADYBUG_DLL, EntryPoint = "ladybugGetLibraryVersion", CallingConvention = CallingConvention.Cdecl)]
-        public static extern LadybugError GetLibraryVersion(IntPtr context, out uint major, out uint minor, out uint type, out uint build);
+        public static extern LadybugError GetLibraryVersion(IntPtr context, out uint major, out uint minor, out uint maintenance, out uint build);
 
         /**
          * Writes the specified image to disk. 
@@ -1593,7 +1617,7 @@ namespace LadybugAPI
          * @ingroup Ladybug_cs
          */
 
-        /*@{*/ 
+        /*@{*/
 
         /**
          * Starts the camera with the specified data format.  
@@ -1692,7 +1716,7 @@ namespace LadybugAPI
          * @return A LadybugError indicating the success of the function.
          *
          * @see ladybugStart(), ladybugGrabImage(), ladybugStop(), ladybugSetAutoJPEGQualityControlFlag()
-         */                 
+         */
         [DllImport(LADYBUG_DLL, EntryPoint = "ladybugStartEx", CallingConvention = CallingConvention.Cdecl)]
         public static extern LadybugError StartEx(
             IntPtr context,
@@ -1895,7 +1919,7 @@ namespace LadybugAPI
          * @ingroup Ladybug_cs
          */
 
-        /*@{*/ 
+        /*@{*/
 
 
         /**
@@ -2065,7 +2089,7 @@ namespace LadybugAPI
                     ref LadybugImage pImage,
                     byte** arpDestBuffers,
                     LadybugPixelFormat pixelFormat = LadybugPixelFormat.LADYBUG_UNSPECIFIED_PIXEL_FORMAT);
-        
+
         /**
          * Converts the 6 images in a LadybugImage into 6 BGRA buffers. 
          *
@@ -2151,7 +2175,7 @@ namespace LadybugAPI
          */
         [DllImport(LADYBUG_DLL, EntryPoint = "ladybugExtractLadybugImageToFilesBGRU32", CallingConvention = CallingConvention.Cdecl)]
         public static extern LadybugError ExtractLadybugImageToFilesBGRU32(
-            IntPtr context, 
+            IntPtr context,
             ref LadybugImage image,
             IntPtr* fileNames,
             ref LadybugImageInfo imageInfo,
@@ -2410,7 +2434,7 @@ namespace LadybugAPI
          * @ingroup Ladybug_cs
          */
 
-        /*@{*/ 
+        /*@{*/
 
         /**
          * Retrieves a flag indicating if intensity falloff will be corrected in 
@@ -2469,7 +2493,7 @@ namespace LadybugAPI
          */
         [DllImport(LADYBUG_DLL, EntryPoint = "ladybugGetFalloffCorrectionAttenuation", CallingConvention = CallingConvention.Cdecl)]
         public static extern LadybugError GetFalloffCorrectionAttenuation(IntPtr context, out float attenuationFraction);
-        
+
         /**
          * Sets the current falloff correction value.
          *
@@ -2495,7 +2519,7 @@ namespace LadybugAPI
          *
          * The specified gamma should match the gamma setting when these images were
          * originally captured. Gamma can be extracted either interactively from the
-         * Camera Control Dialog of the LadybugCap or LadybugCapPro programs, or 
+         * Camera Control Dialog of the LadybugCapPro program, or 
          * programmatically from the ulGamma field inside the LadybugImageInfo 
          * of the original LadybugImage.
          *
@@ -2518,10 +2542,10 @@ namespace LadybugAPI
          */
         [DllImport(LADYBUG_DLL, EntryPoint = "ladybugCorrectBGRUFalloffEx", CallingConvention = CallingConvention.Cdecl)]
         public static extern LadybugError CorrectBGRUFallofEx(
-            IntPtr context, 
-            uint numCols, 
-            uint numRows, 
-            byte** arpBGRU3Images, 
+            IntPtr context,
+            uint numCols,
+            uint numRows,
+            byte** arpBGRU3Images,
             LadybugPixelFormat pixelFormat, long gamma);
 
         /**
@@ -2533,7 +2557,7 @@ namespace LadybugAPI
          *
          * The specified gamma should match the gamma setting when these images were
          * originally captured. Gamma can be extracted either interactively from the
-         * Camera Control Dialog of the LadybugCap or LadybugCapPro programs or 
+         * Camera Control Dialog of the LadybugCapPro program or 
          * programmatically from the ulGamma field inside the LaydbugImageInfo of 
          * the original LadybugImage.
          *
@@ -2555,10 +2579,10 @@ namespace LadybugAPI
          */
         [DllImport(LADYBUG_DLL, EntryPoint = "ladybugCorrectStippledFalloffEx", CallingConvention = CallingConvention.Cdecl)]
         public static extern LadybugError CorrectStippledFalloffEx(
-            IntPtr context, 
-            uint numCols, 
-            uint numRows, 
-            byte** arpStippledImages, 
+            IntPtr context,
+            uint numCols,
+            uint numRows,
+            byte** arpStippledImages,
             long gamma);
 
         /*@}*/
@@ -2572,7 +2596,7 @@ namespace LadybugAPI
          * @ingroup Ladybug_cs
          */
 
-        /*@{*/ 
+        /*@{*/
 
         /**
          * Get information about the range of a specific camera property.
@@ -3012,7 +3036,7 @@ namespace LadybugAPI
          * @see ladybugReadRegisterBlock()
          */
         [DllImport(LADYBUG_DLL, EntryPoint = "ladybugWriteRegisterBlock", CallingConvention = CallingConvention.Cdecl)]
-        public static extern LadybugError WriteRegisterBlock (IntPtr context, ushort addrHigh, uint addLow, uint* buffer, uint length);
+        public static extern LadybugError WriteRegisterBlock(IntPtr context, ushort addrHigh, uint addLow, uint* buffer, uint length);
 
         /**
          * Gets the range of possible values of a property associated with a 
@@ -3058,7 +3082,7 @@ namespace LadybugAPI
                             out ulong pulValue,
                             out bool pbOnOff,
                             out bool pbAuto,
-                            out uint puiAutoExpCams );
+                            out uint puiAutoExpCams);
 
         /**
          * Sets the value of a property of a specified camera, independent of the 
@@ -3096,7 +3120,7 @@ namespace LadybugAPI
                             ulong ulValue,
                             bool bOnOff,
                             bool bAuto,
-                            uint uiAutoExpCams );
+                            uint uiAutoExpCams);
 
         /**
          * Get the current shutter range set on the camera. If a range not matching
@@ -3169,7 +3193,7 @@ namespace LadybugAPI
          * @ingroup Ladybug_cs
          */
 
-        /*@{*/ 
+        /*@{*/
 
         /**
          * Get the current memory channel in use.
@@ -3211,7 +3235,7 @@ namespace LadybugAPI
          * @param numMemoryChannels - Number of memory channels.
          *
          * @return A LadybugError indicating the success of the function.
-         */    
+         */
         [DllImport(LADYBUG_DLL, EntryPoint = "ladybugGetMemoryChannelInfo", CallingConvention = CallingConvention.Cdecl)]
         public static extern LadybugError GetMemoryChannelInfo(IntPtr context, out uint numMemoryChannels);
 
@@ -3227,7 +3251,7 @@ namespace LadybugAPI
          * @ingroup Ladybug_cs
          */
 
-        /*@{*/ 
+        /*@{*/
 
         /**
          * Gets the current JPEG compression quality setting on the camera (used with JPEG data formats).
@@ -3352,7 +3376,7 @@ namespace LadybugAPI
          * @ingroup Ladybug_cs
          */
 
-        /*@{*/ 
+        /*@{*/
 
         /**
          * This function retrieves information from the camera about the 

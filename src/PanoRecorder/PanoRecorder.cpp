@@ -107,7 +107,7 @@ struct GPSDATA
 #endif
 
 // INI file name
-#define  INI_FILENAME "PanoRecorder.ini"
+#define  INI_FILENAME "PanoRecorder.ini" // XXX new
 
 // INI file keys
 #define INI_RECORDING_FILE_BASE_NAME   "BaseStreamName"
@@ -171,7 +171,7 @@ bool bRecordingInProgress = false;
 int menu;
 LadybugGPSContext GPScontext = NULL;
 GPSDATA GPS_Data_Prev, GPS_Data_Current;
-int frameCall = 0;
+int frameCall = 0; //XXX new
 
 //=============================================================================
 // A class for reading INI file.  
@@ -456,6 +456,12 @@ loadIniFile( const char* pszINIFilename )
     case 7:
         ladybugDataFormat = LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12;
         break;
+	case 8:
+		ladybugDataFormat = LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12_PROCESSED;
+		break;
+	case 9:
+		ladybugDataFormat = LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12_PROCESSED;
+		break;
     default:
         ladybugDataFormat = LADYBUG_DATAFORMAT_COLOR_SEP_JPEG8;
     }
@@ -495,6 +501,9 @@ loadIniFile( const char* pszINIFilename )
         break;    
     case 10:
         colorProcessingMethod = LADYBUG_WEIGHTED_DIRECTIONAL_FILTER;
+        break;
+    case 11:
+        colorProcessingMethod = LADYBUG_DOWNSAMPLE64;
         break;
     default:
         colorProcessingMethod = LADYBUG_NEAREST_NEIGHBOR_FAST;
@@ -537,6 +546,8 @@ bool isHighBitDepth( LadybugDataFormat format)
         format == LADYBUG_DATAFORMAT_HALF_HEIGHT_RAW12 ||
         format == LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12 ||
         format == LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12 ||
+		format == LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12_PROCESSED ||
+		format == LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12_PROCESSED ||
         format == LADYBUG_DATAFORMAT_RAW16 ||
         format == LADYBUG_DATAFORMAT_HALF_HEIGHT_RAW16;
 }
@@ -597,6 +608,8 @@ cleanUp( void )
     printf( "Destroying context...\n" );
     if ( context != NULL ) 
     {
+		error = ladybugStop(context);// XXX new
+		_HANDLE_ERROR;
         error = ladybugDestroyContext( &context );
         _HANDLE_ERROR;
         context = NULL;
@@ -821,8 +834,6 @@ buildPopupMenu (void)
 int  
 startCamera( void)
 {    
-
-
     //
     // Initialize context.
     //
@@ -836,7 +847,7 @@ startCamera( void)
     error = ladybugInitializePlus( 
         context, 0, iNumberOfBuffers, NULL, 0 );
     _HANDLE_ERROR;
-
+	
 	error = ::ladybugRestoreFromMemoryChannel(context, 0); //XXX new
 	_HANDLE_ERROR; //XXX new
 
@@ -878,36 +889,32 @@ startCamera( void)
     // Set the timeout value for grab function to zero.
     // Do not wait if there is no image waiting. 
     //
-    ladybugSetGrabTimeout( context, 100); //XXX Sets the timeout (probably useful if GPS deactivated) interval ms
-
-	// XXX new
-	/*
-	LadybugTriggerMode TriggerMode;
-	LadybugTriggerMode *pTriggerMode = &TriggerMode;
-	TriggerMode.bOnOff = true;
-	TriggerMode.uiMode = 0; //Check
-	TriggerMode.uiPolarity = 1;
-	TriggerMode.uiSource = 0; ////Check
-	
-	ladybugSetTriggerMode(context, pTriggerMode, false);
-    */
-
-	// XXX new
+    ladybugSetGrabTimeout( context, 10); //XXX Sets the timeout (probably useful if GPS deactivated) interval ms
 
     //
     // Start Ladybug with the specified data format
     //
+	/// XXX new could be solving the re-start issue
+	error = ::ladybugStartLockNext(
+		context,
+		LADYBUG_DATAFORMAT_COLOR_SEP_JPEG8);
+	_HANDLE_ERROR;
+	error = ladybugStop(context);
+	_HANDLE_ERROR;
+	/// XXX new
+
+
     printf( "Starting camera...\n" );
     error = ::ladybugStartLockNext(
         context,
         ladybugDataFormat);
     _HANDLE_ERROR;
 
-    //
-    // Set color processing method
-    //
-    error = ::ladybugSetColorProcessingMethod( context, colorProcessingMethod );
-    _HANDLE_ERROR;
+
+	// Set color processing method
+//
+	error = ::ladybugSetColorProcessingMethod(context, colorProcessingMethod);
+	_HANDLE_ERROR;
 
     int iTryTimes = 0;
     do
@@ -918,20 +925,17 @@ startCamera( void)
         error = ladybugLockNext( context, &image_Prev );
     } while ( ( error != LADYBUG_OK )  && ( iTryTimes++ < 10) );    
     _HANDLE_ERROR;
-
-		// XXX new
+	// XXX new
 	//*
 	LadybugTriggerMode TriggerMode;
-	LadybugTriggerMode *pTriggerMode = &TriggerMode;
+	//LadybugTriggerMode *pTriggerMode = &TriggerMode;
 	TriggerMode.bOnOff = true;
 	TriggerMode.uiMode = 0; //Check
 	TriggerMode.uiPolarity = 1;
 	TriggerMode.uiSource = 0; ////Check
 	
-	ladybugSetTriggerMode(context, pTriggerMode, false);
+	ladybugSetTriggerMode(context, &TriggerMode, false);
     //*/
-
-
     //
     // Load config file from the head
     //
@@ -943,7 +947,12 @@ startCamera( void)
     // Set the size of the image to be processed
     //
     unsigned int uiRawCols, uiRawRows;
-    if (colorProcessingMethod == LADYBUG_DOWNSAMPLE16)
+    if (colorProcessingMethod == LADYBUG_DOWNSAMPLE64)
+    {
+        uiRawCols = image_Prev.uiCols / 8;
+        uiRawRows = image_Prev.uiRows / 8;
+    }
+    else if (colorProcessingMethod == LADYBUG_DOWNSAMPLE16)
     {
         uiRawCols = image_Prev.uiCols / 4;
         uiRawRows = image_Prev.uiRows / 4;
@@ -970,13 +979,18 @@ startCamera( void)
 
 
     // we will not use auto buffer usage feature, set it to a fixed percentage
-    printf( "Disabling Auto JPEG Quality control...\n");
-    error = ladybugSetAutoJPEGQualityControlFlag( context, false);
-    _HANDLE_ERROR;
+   // printf( "Disabling Auto JPEG Quality control...\n");
+//    error = ladybugSetAutoJPEGQualityControlFlag( context, false);
+  //  _HANDLE_ERROR;
 
-    printf( "Setting JPEG quality to 80...\n");
-    error = ladybugSetJPEGQuality(context, 80);
+    printf( "Setting JPEG quality to auto..\n");
+    //error = ladybugSetJPEGQuality(context, 10); // XXX fixed value of 80 too high for JPEG 12bit
+	error = ladybugSetAutoJPEGQualityControlFlag(context, true); // XXX new
     _HANDLE_ERROR;
+	int buffer = 94;
+	error = ladybugSetAutoJPEGBufferUsage(context, buffer);// XXX new
+	printf("Setting JPEG buffer to %d\n", buffer);
+	_HANDLE_ERROR;
 
     if ( bRecordingAutoStart )
     {
@@ -1225,7 +1239,6 @@ recordingImage( void )
             // Set to the window title to show the current info
             //
             glutSetWindowTitle( pszTimeString );
-			//glutPostRedisplay(); // XXX new in this place
         }
 
         ladybugUnlock( context, image_Prev.uiBufferIndex );
@@ -1247,7 +1260,7 @@ recordingImage( void )
             isTextureUpdated = true;
 
             // Redisplay
-            glutPostRedisplay(); 
+            glutPostRedisplay();
         }
         break;
 
@@ -1283,7 +1296,7 @@ int main(int argc, char** argv)
     // Start Ladybug2 camera
     //
     startCamera();
-	//keyboard('r', 0, 0); // XXX new
+    //keyboard('r', 0, 0); // XXX new
 
     //
     // Configure output images in Ladybug library
@@ -1330,6 +1343,7 @@ int main(int argc, char** argv)
     //
     // Turn the flow of control over to GLUT
     //
+	FreeConsole();
     printf( "Grabbing...\n" );
     glutMainLoop();
     return 0;

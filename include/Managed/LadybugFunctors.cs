@@ -147,6 +147,7 @@ namespace LadybugAPI
                 case LadybugColorProcessingMethod.LADYBUG_DIRECTIONAL_FILTER: return 1;
                 case LadybugColorProcessingMethod.LADYBUG_DOWNSAMPLE4: return 2;
                 case LadybugColorProcessingMethod.LADYBUG_DOWNSAMPLE16: return 4;
+                case LadybugColorProcessingMethod.LADYBUG_DOWNSAMPLE64: return 8;
                 case LadybugColorProcessingMethod.LADYBUG_MONO: return 2;
                 default:
                     var msge = string.Format("GetScaleFactor error, proper case not found. Input format was: {0}", method.ToString());
@@ -222,6 +223,10 @@ namespace LadybugAPI
                     return "RAW12";
                 case LadybugDataFormat.LADYBUG_DATAFORMAT_HALF_HEIGHT_RAW12:
                     return "HALF_HEIGHT_RAW12";
+                case LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12_PROCESSED:
+                    return "COLOR_SEP_JPEG12_PROCESSED";
+                case LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12_PROCESSED:
+                    return "COLOR_SEP_HALF_HEIGHT_JPEG12_PROCESSED";
                 case LadybugDataFormat.LADYBUG_DATAFORMAT_ANY:
                     return "ANY";
                 default:
@@ -259,6 +264,8 @@ namespace LadybugAPI
                 case LadybugDataFormat.LADYBUG_DATAFORMAT_HALF_HEIGHT_RAW12:
                 case LadybugDataFormat.LADYBUG_DATAFORMAT_RAW8:
                 case LadybugDataFormat.LADYBUG_DATAFORMAT_HALF_HEIGHT_RAW8:
+                case LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12_PROCESSED:
+                case LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12_PROCESSED:
                     return true;
                 default:
                     return false;
@@ -281,6 +288,7 @@ namespace LadybugAPI
             {
                 case LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG8:
                 case LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12:
+                case LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12_PROCESSED:
                 case LadybugDataFormat.LADYBUG_DATAFORMAT_HALF_HEIGHT_RAW16:
                 case LadybugDataFormat.LADYBUG_DATAFORMAT_HALF_HEIGHT_RAW12:
                 case LadybugDataFormat.LADYBUG_DATAFORMAT_HALF_HEIGHT_RAW8:
@@ -329,7 +337,9 @@ namespace LadybugAPI
             return (format == LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_JPEG8 ||
                 format == LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG8 ||
                 format == LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12 ||
-                format == LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12);
+                format == LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12 ||
+                format == LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12_PROCESSED ||
+                format == LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12_PROCESSED);
         }
 
         //=============================================================================
@@ -349,7 +359,9 @@ namespace LadybugAPI
             return (format == LadybugDataFormat.LADYBUG_DATAFORMAT_RAW12 ||
                 format == LadybugDataFormat.LADYBUG_DATAFORMAT_HALF_HEIGHT_RAW12 ||
                 format == LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12 ||
-                format == LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12);
+                format == LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12 ||
+                format == LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_JPEG12_PROCESSED ||
+                format == LadybugDataFormat.LADYBUG_DATAFORMAT_COLOR_SEP_HALF_HEIGHT_JPEG12_PROCESSED);
         }
 
         //=============================================================================
