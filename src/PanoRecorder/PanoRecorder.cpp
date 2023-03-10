@@ -617,6 +617,10 @@ cleanUp( void )
 
     if ( streamContext != NULL )
     {
+		// Stop recording
+		error = ladybugStopStream(streamContext); // XXX new
+		_HANDLE_ERROR;
+		bRecordingInProgress = false;// XXX new
         error = ladybugDestroyStreamContext ( &streamContext );
         _HANDLE_ERROR;
         streamContext = NULL;
@@ -675,11 +679,11 @@ keyboard( unsigned char k, int /*x*/, int /*y*/ )
 #ifdef _WIN32
             // Try to record stream to "My Documents".
             char buf[_MAX_PATH];
-            HRESULT hres = SHGetFolderPath( NULL, CSIDL_PERSONAL, NULL, 0, buf);
+            HRESULT hres = SHGetFolderPath( NULL, CSIDL_PERSONAL, NULL, 0, buf); /// XXX this is the folder to save to
             if ( hres == S_OK)
             {
                 // Set stream name to "My Documents" folder
-                sprintf( pszStreamNameToOpen,
+                sprintf( pszStreamNameToOpen, 
                     "%s\\%s\0",buf, pszStreamBaseName );
             }
             else
@@ -895,6 +899,7 @@ startCamera( void)
     // Start Ladybug with the specified data format
     //
 	/// XXX new could be solving the re-start issue
+	/*
 	error = ::ladybugStartLockNext(
 		context,
 		LADYBUG_DATAFORMAT_COLOR_SEP_JPEG8);
@@ -902,7 +907,7 @@ startCamera( void)
 	error = ladybugStop(context);
 	_HANDLE_ERROR;
 	/// XXX new
-
+	*/
 
     printf( "Starting camera...\n" );
     error = ::ladybugStartLockNext(
@@ -994,7 +999,7 @@ startCamera( void)
 
     if ( bRecordingAutoStart )
     {
-        keyboard('r', 0, 0);
+       // keyboard('r', 0, 0); XXX calll after x frames
     }
 
     return 0;
@@ -1296,7 +1301,7 @@ int main(int argc, char** argv)
     // Start Ladybug2 camera
     //
     startCamera();
-    //keyboard('r', 0, 0); // XXX new
+    //keyboard('r', 0, 0); // XXX new call after X franes
 
     //
     // Configure output images in Ladybug library
@@ -1329,8 +1334,8 @@ int main(int argc, char** argv)
     //
     // Create a popup menu
     //
-    buildPopupMenu();
-    glutAttachMenu(GLUT_RIGHT_BUTTON);
+   //buildPopupMenu();
+  // glutAttachMenu(GLUT_RIGHT_BUTTON);
 
     //
     // Reset frame counter
@@ -1343,7 +1348,7 @@ int main(int argc, char** argv)
     //
     // Turn the flow of control over to GLUT
     //
-	FreeConsole();
+	//FreeConsole(); XXX new
     printf( "Grabbing...\n" );
     glutMainLoop();
     return 0;
